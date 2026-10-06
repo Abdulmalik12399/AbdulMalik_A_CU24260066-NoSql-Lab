@@ -1,0 +1,332 @@
+Part A – Apache HBase
+1. Student Table
+Create table
+create 'Student', 'personal', 'academic'
+Insert 5 records
+put 'Student','101','personal:name','Rahul'
+put 'Student','101','personal:course','BCA'
+put 'Student','101','academic:marks','85'
+
+put 'Student','102','personal:name','Amit'
+put 'Student','102','personal:course','BCA'
+put 'Student','102','academic:marks','90'
+
+put 'Student','103','personal:name','Neha'
+put 'Student','103','personal:course','BCA'
+put 'Student','103','academic:marks','88'
+
+put 'Student','104','personal:name','Priya'
+put 'Student','104','personal:course','BCA'
+put 'Student','104','academic:marks','92'
+
+put 'Student','105','personal:name','Rohit'
+put 'Student','105','personal:course','BCA'
+put 'Student','105','academic:marks','80'
+Display records
+scan 'Student'
+
+Output:
+
+101  Rahul  BCA  85
+102  Amit   BCA  90
+103  Neha   BCA  88
+104  Priya  BCA  92
+105  Rohit  BCA  80
+2. Employee CRUD Operations
+Create
+create 'Employee','info'
+Put
+put 'Employee','E101','info:name','Abdul'
+put 'Employee','E101','info:dept','IT'
+put 'Employee','E101','info:salary','30000'
+Get
+get 'Employee','E101'
+Scan
+scan 'Employee'
+Delete one value
+delete 'Employee','E101','info:salary'
+Delete complete row
+deleteall 'Employee','E101'
+3. Event Logging System
+Create table
+create 'Events','event','user','status'
+Insert events
+put 'Events','E001','event:timestamp','2026-10-06 10:00'
+put 'Events','E001','event:type','LOGIN'
+put 'Events','E001','user:id','U101'
+put 'Events','E001','status:value','SUCCESS'
+
+put 'Events','E002','event:timestamp','2026-10-06 10:05'
+put 'Events','E002','event:type','LOGOUT'
+put 'Events','E002','user:id','U102'
+put 'Events','E002','status:value','SUCCESS'
+Retrieve
+get 'Events','E001'
+4. Content Management System
+Create
+create 'CMS','content','author','metadata'
+Insert
+put 'CMS','C101','content:title','NoSQL Database'
+put 'CMS','C101','content:text','Introduction to NoSQL'
+put 'CMS','C101','author:name','Abdul'
+put 'CMS','C101','metadata:date','2026-10-06'
+Update
+put 'CMS','C101','content:title','NoSQL Database Tutorial'
+Retrieve
+get 'CMS','C101'
+Delete
+deleteall 'CMS','C101'
+5. Blogging Platform
+Create
+create 'Blog','blog','author','comments'
+Insert 3 blogs
+put 'Blog','B101','blog:title','HBase Introduction'
+put 'Blog','B101','blog:content','Learning HBase'
+put 'Blog','B101','author:name','Rahul'
+
+put 'Blog','B102','blog:title','Cassandra Basics'
+put 'Blog','B102','blog:content','Learning Cassandra'
+put 'Blog','B102','author:name','Amit'
+
+put 'Blog','B103','blog:title','NoSQL Guide'
+put 'Blog','B103','blog:content','NoSQL Concepts'
+put 'Blog','B103','author:name','Neha'
+Retrieve particular blog
+get 'Blog','B101'
+6. Column-Family Data Model
+Create table
+create 'College','personal','academic'
+Insert different qualifiers
+put 'College','101','personal:name','Rahul'
+put 'College','101','personal:email','rahul@gmail.com'
+put 'College','101','academic:course','BCA'
+put 'College','101','academic:marks','90'
+
+Here:
+
+Column Family → personal
+Qualifiers    → name, email
+
+Column Family → academic
+Qualifiers    → course, marks
+
+HBase allows different rows to have different qualifiers.
+
+7. Website Counter
+Create
+create 'WebsiteCounter','counter'
+Increment
+incr 'WebsiteCounter','home','counter:views',1
+incr 'WebsiteCounter','home','counter:views',1
+incr 'WebsiteCounter','about','counter:views',1
+Display
+get 'WebsiteCounter','home'
+get 'WebsiteCounter','about'
+
+Expected:
+
+home  → 2
+about → 1
+8. Expiring Session Data
+
+Create table with TTL:
+
+create 'Session','info', {NAME=>'info', TTL=>86400}
+
+86400 seconds = 24 hours.
+
+Insert
+put 'Session','S101','info:user','U101'
+put 'Session','S101','info:login','10:00 AM'
+Check
+get 'Session','S101'
+
+After the TTL expires, the column value automatically expires.
+
+9. Large-Scale Application and Row Key
+
+Use a row key containing a hash/prefix to distribute records:
+
+01#USER101
+02#USER102
+03#USER103
+Create
+create 'LargeApp','data'
+Insert
+put 'LargeApp','01#USER101','data:name','Rahul'
+put 'LargeApp','02#USER102','data:name','Amit'
+put 'LargeApp','03#USER103','data:name','Neha'
+Display
+scan 'LargeApp'
+
+A well-distributed row key helps prevent RegionServer hotspots and supports horizontal scaling.
+
+10. Multiple Regions
+
+Create a table with predefined split points:
+
+create 'Sales','info', {SPLITS=>['100','200','300']}
+
+This creates multiple regions.
+
+Region 1 → <100
+Region 2 → 100–199
+Region 3 → 200–299
+Region 4 → >=300
+
+RegionServer:
+RegionServers host regions and handle read/write requests. Multiple RegionServers allow HBase to distribute workload and scale horizontally.
+
+Part B – Apache Cassandra
+11. CollegeDB and Students
+Create keyspace
+CREATE KEYSPACE CollegeDB
+WITH replication = {
+'class':'SimpleStrategy',
+'replication_factor':3
+};
+USE CollegeDB;
+Create table
+CREATE TABLE Students (
+    rollno int PRIMARY KEY,
+    name text,
+    department text,
+    marks int
+);
+Insert 5 records
+INSERT INTO Students VALUES (101,'Rahul','BCA',85);
+INSERT INTO Students VALUES (102,'Amit','BCA',90);
+INSERT INTO Students VALUES (103,'Neha','BCA',88);
+INSERT INTO Students VALUES (104,'Priya','BCA',92);
+INSERT INTO Students VALUES (105,'Rohit','BCA',80);
+Retrieve
+SELECT * FROM Students;
+12. Employee CRUD in Cassandra
+Create
+CREATE TABLE Employees (
+    id int PRIMARY KEY,
+    name text,
+    department text,
+    salary int
+);
+INSERT
+INSERT INTO Employees VALUES
+(1,'Abdul','IT',30000);
+SELECT
+SELECT * FROM Employees;
+UPDATE
+UPDATE Employees
+SET salary=35000
+WHERE id=1;
+DELETE
+DELETE FROM Employees
+WHERE id=1;
+13. Cassandra Event Logging
+Create table
+CREATE TABLE Events (
+    user_id text,
+    event_time timestamp,
+    event_type text,
+    status text,
+    PRIMARY KEY (user_id,event_time)
+);
+Insert events
+INSERT INTO Events VALUES
+('U101','2026-10-06 10:00:00','LOGIN','SUCCESS');
+
+INSERT INTO Events VALUES
+('U101','2026-10-06 10:30:00','LOGOUT','SUCCESS');
+
+INSERT INTO Events VALUES
+('U102','2026-10-06 11:00:00','LOGIN','SUCCESS');
+Retrieve user's events
+SELECT * FROM Events
+WHERE user_id='U101';
+Retrieve by time period
+SELECT * FROM Events
+WHERE user_id='U101'
+AND event_time >= '2026-10-06 10:00:00'
+AND event_time <= '2026-10-06 11:00:00';
+14. Cassandra Consistency Levels
+Keyspace
+CREATE KEYSPACE TestDB
+WITH replication = {
+'class':'SimpleStrategy',
+'replication_factor':3
+};
+Use keyspace
+USE TestDB;
+Consistency ONE
+CONSISTENCY ONE;
+SELECT * FROM Students;
+
+Only one replica needs to respond.
+
+QUORUM
+CONSISTENCY QUORUM;
+SELECT * FROM Students;
+
+For 3 replicas, a majority must respond.
+
+ALL
+CONSISTENCY ALL;
+SELECT * FROM Students;
+
+All replicas must respond.
+
+Comparison
+ONE    → High availability, low latency
+QUORUM → Balance of consistency and availability
+ALL    → Highest consistency, lower availability
+15. Complete NoSQL Application – Event Logging Using Cassandra
+Step 1: Create Keyspace
+CREATE KEYSPACE EventDB
+WITH replication = {
+'class':'SimpleStrategy',
+'replication_factor':3
+};
+USE EventDB;
+Step 2: Create Table
+CREATE TABLE EventLog (
+    user_id text,
+    event_time timestamp,
+    event_type text,
+    status text,
+    device text,
+    PRIMARY KEY (user_id,event_time)
+);
+Step 3: Insert Data
+INSERT INTO EventLog VALUES
+('U101','2026-10-06 10:00:00','LOGIN','SUCCESS','Mobile');
+
+INSERT INTO EventLog VALUES
+('U101','2026-10-06 10:10:00','VIEW','SUCCESS','Laptop');
+
+INSERT INTO EventLog VALUES
+('U102','2026-10-06 10:20:00','LOGIN','SUCCESS','Mobile');
+Step 4: Query
+SELECT * FROM EventLog
+WHERE user_id='U101';
+Step 5: Update
+UPDATE EventLog
+SET status='FAILED'
+WHERE user_id='U101'
+AND event_time='2026-10-06 10:00:00';
+Step 6: Delete
+DELETE FROM EventLog
+WHERE user_id='U101'
+AND event_time='2026-10-06 10:10:00';
+Step 7: Consistency
+CONSISTENCY QUORUM;
+
+This provides a balance between consistency and availability.
+
+Step 8: Scaling
+
+Cassandra supports:
+
+Horizontal scaling by adding nodes.
+Partitioning using the partition key (user_id).
+Replication across multiple nodes.
+Fault tolerance when a node fails.
+Distributed request processing.
