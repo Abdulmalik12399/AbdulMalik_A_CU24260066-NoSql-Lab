@@ -1,0 +1,396 @@
+Part A – Riak KV
+1. Install Riak KV and Student Operations
+Install on Linux
+sudo apt update
+sudo apt install curl
+
+Download/install the appropriate Riak KV package for your Linux distribution, then start Riak:
+
+sudo systemctl start riak
+riak ping
+
+Expected:
+
+pong
+Create students bucket
+
+Riak KV buckets are normally created implicitly when a key is written.
+
+Store student
+curl -X PUT http://localhost:8098/buckets/students/keys/101 \
+-H "Content-Type: application/json" \
+-d '{"name":"Rahul","course":"BCA","marks":85}'
+Retrieve
+curl http://localhost:8098/buckets/students/keys/101
+Update
+curl -X PUT http://localhost:8098/buckets/students/keys/101 \
+-H "Content-Type: application/json" \
+-d '{"name":"Rahul","course":"BCA","marks":90}'
+Delete
+curl -X DELETE http://localhost:8098/buckets/students/keys/101
+2. User Sessions
+Store session
+curl -X PUT http://localhost:8098/buckets/user_sessions/keys/S101 \
+-H "Content-Type: application/json" \
+-d '{"session_id":"S101","user_id":"U101","login_time":"10:00","status":"active"}'
+Retrieve
+curl http://localhost:8098/buckets/user_sessions/keys/S101
+
+Output:
+
+{
+  "session_id":"S101",
+  "user_id":"U101",
+  "login_time":"10:00",
+  "status":"active"
+}
+3. User Profiles and Preferences
+PUT
+curl -X PUT http://localhost:8098/buckets/profiles/keys/U101 \
+-H "Content-Type: application/json" \
+-d '{
+"name":"Abdul",
+"email":"abdul@gmail.com",
+"city":"Jaipur",
+"language":"English",
+"theme":"Dark",
+"notifications":true
+}'
+GET
+curl http://localhost:8098/buckets/profiles/keys/U101
+4. Shopping Cart
+
+Store the complete cart as one value:
+
+curl -X PUT http://localhost:8098/buckets/carts/keys/U101 \
+-H "Content-Type: application/json" \
+-d '{
+"products":[
+{"id":"P101","quantity":2,"price":500},
+{"id":"P102","quantity":1,"price":800}
+],
+"total":1800
+}'
+Retrieve
+curl http://localhost:8098/buckets/carts/keys/U101
+Update quantity
+curl -X PUT http://localhost:8098/buckets/carts/keys/U101 \
+-H "Content-Type: application/json" \
+-d '{
+"products":[
+{"id":"P101","quantity":3,"price":500},
+{"id":"P102","quantity":1,"price":800}
+],
+"total":2300
+}'
+Remove a product
+
+Send an updated cart without that product.
+
+curl -X PUT http://localhost:8098/buckets/carts/keys/U101 \
+-H "Content-Type: application/json" \
+-d '{
+"products":[
+{"id":"P102","quantity":1,"price":800}
+],
+"total":800
+}'
+5. Different Types of Values
+String
+curl -X PUT http://localhost:8098/buckets/data/keys/name \
+-d 'Abdul'
+JSON
+curl -X PUT http://localhost:8098/buckets/data/keys/student \
+-H "Content-Type: application/json" \
+-d '{"name":"Rahul","age":21}'
+List
+curl -X PUT http://localhost:8098/buckets/data/keys/subjects \
+-H "Content-Type: application/json" \
+-d '["Java","Python","NoSQL"]'
+Retrieve
+curl http://localhost:8098/buckets/data/keys/student
+curl http://localhost:8098/buckets/data/keys/subjects
+Structure
+Bucket
+   |
+   +--- Key
+         |
+         +--- Value
+
+Example:
+
+students → 101 → {"name":"Rahul","marks":85}
+Bucket: Logical collection.
+Key: Unique identifier.
+Value: Actual stored data.
+6. Consistency in Riak KV
+
+Riak uses replication and quorum parameters to balance consistency and availability.
+
+Example request:
+
+curl -X PUT \
+'http://localhost:8098/buckets/students/keys/101?w=2'
+
+w=2 means the write should receive acknowledgements from two replicas.
+
+Read:
+
+curl \
+'http://localhost:8098/buckets/students/keys/101?r=2'
+
+r=2 requests responses from two replicas.
+
+Common concepts:
+
+N → Number of replicas
+W → Required write acknowledgements
+R → Required read acknowledgements
+
+Higher R/W values can improve consistency but may increase latency and reduce availability during failures.
+
+7. Riak Scaling
+
+Create multiple buckets:
+
+students
+products
+orders
+users
+
+Insert records:
+
+curl -X PUT http://localhost:8098/buckets/students/keys/1 -d 'Rahul'
+curl -X PUT http://localhost:8098/buckets/students/keys/2 -d 'Amit'
+curl -X PUT http://localhost:8098/buckets/students/keys/3 -d 'Neha'
+
+Riak distributes data across cluster nodes using consistent hashing and partitions.
+
+          Riak Cluster
+       /       |       \
+    Node 1   Node 2   Node 3
+      |         |        |
+   Data A    Data B    Data C
+
+Adding nodes increases storage and processing capacity.
+
+8. Transaction-Like Shopping Operation
+
+Suppose we need to:
+
+Add product.
+Update quantity.
+Update total.
+Cart U101
+→ Product P101
+→ Quantity = 2
+→ Total = ₹1000
+
+In Riak, these operations are generally handled by application logic.
+
+GET cart
+     ↓
+Modify cart
+     ↓
+PUT updated cart
+Limitation
+
+These multiple operations are not equivalent to a traditional ACID multi-row transaction. A failure between operations can leave partially updated data.
+
+Applications can reduce problems using:
+
+Atomic single-object updates.
+Conditional writes.
+Idempotent operations.
+Application-level validation.
+9. Query-by-Data
+
+Store JSON:
+
+curl -X PUT http://localhost:8098/buckets/users/keys/U101 \
+-H "Content-Type: application/json" \
+-d '{"name":"Rahul","age":21,"city":"Delhi"}'
+
+Another user:
+
+curl -X PUT http://localhost:8098/buckets/users/keys/U102 \
+-H "Content-Type: application/json" \
+-d '{"name":"Amit","age":22,"city":"Jaipur"}'
+
+Basic Riak KV access is key-based. For complex attribute searches, the application can retrieve/index records and filter them, or use Riak's supported secondary-index/search features where configured.
+
+Example application logic:
+
+if user["city"] == "Jaipur":
+    print(user)
+
+This is different from directly doing:
+
+GET U102
+
+because the second operation already knows the key.
+
+10. Set Operations
+
+A set can contain unique interests:
+
+User101 → {Java, Python, SQL}
+Add
+Java
+Python
+SQL
+NoSQL
+Remove
+Remove SQL
+Membership
+Python ∈ User101 interests
+Common elements
+User101 = {Java, Python, SQL}
+User102 = {Python, SQL, HTML}
+
+Common = {Python, SQL}
+
+Sets are useful for:
+
+User interests.
+Product categories.
+Tags.
+Groups.
+Social relationships.
+Part B – Neo4j
+11. Student-Course-Department Graph
+
+Open Neo4j and create nodes:
+
+CREATE (s:Student {id:101,name:'Rahul'}),
+       (c:Course {id:'BCA',name:'BCA'}),
+       (d:Department {id:'D1',name:'Computer Science'});
+Relationships
+MATCH (s:Student {id:101}),
+      (c:Course {id:'BCA'}),
+      (d:Department {id:'D1'})
+CREATE (s)-[:ENROLLED_IN]->(c),
+       (c)-[:BELONGS_TO]->(d);
+View graph
+MATCH (n)-[r]->(m)
+RETURN n,r,m;
+
+Neo4j Browser displays the graph visually.
+
+12. Social Network
+Create nodes
+CREATE (a:Person {name:'Rahul'}),
+       (b:Person {name:'Amit'}),
+       (c:Person {name:'Neha'}),
+       (w:Company {name:'ABC Ltd'});
+Create relationships
+MATCH (a:Person {name:'Rahul'}),
+      (b:Person {name:'Amit'}),
+      (c:Person {name:'Neha'}),
+      (w:Company {name:'ABC Ltd'})
+CREATE (a)-[:FRIENDS_WITH]->(b),
+       (c)-[:FOLLOWS]->(a),
+       (a)-[:WORKS_AT]->(w);
+Find Rahul's friends
+MATCH (p:Person {name:'Rahul'})-[:FRIENDS_WITH]->(f)
+RETURN f;
+Find Rahul's followers
+MATCH (f:Person)-[:FOLLOWS]->(p:Person {name:'Rahul'})
+RETURN f;
+13. E-Commerce Graph
+Create nodes
+CREATE (c:Customer {id:1,name:'Rahul'}),
+       (p:Product {id:101,name:'Laptop'}),
+       (cat:Category {name:'Electronics'}),
+       (o:Order {id:5001});
+Create relationships
+MATCH (c:Customer {id:1}),
+      (p:Product {id:101}),
+      (cat:Category {name:'Electronics'}),
+      (o:Order {id:5001})
+CREATE (c)-[:PLACED]->(o),
+       (o)-[:CONTAINS]->(p),
+       (p)-[:BELONGS_TO]->(cat);
+Find products purchased by Rahul
+MATCH (c:Customer {name:'Rahul'})
+      -[:PLACED]->(:Order)
+      -[:CONTAINS]->(p:Product)
+RETURN p;
+14. Transactions, Consistency and Availability
+
+Neo4j supports transactional operations.
+
+Example:
+
+CREATE (s:Student {id:101,name:'Rahul'});
+MATCH
+MATCH (s:Student {id:101})
+RETURN s;
+SET
+MATCH (s:Student {id:101})
+SET s.name='Rahul Kumar'
+RETURN s;
+DELETE
+MATCH (s:Student {id:101})
+DELETE s;
+
+Multiple related operations can be executed within a transaction so that they are committed together or rolled back if an error occurs.
+
+Consistency
+
+Transactions help ensure that graph changes leave the database in a valid state.
+
+Availability
+
+Neo4j deployments can use clustering and replication for high availability. The exact capabilities depend on the Neo4j edition and deployment architecture.
+
+15. Small Neo4j Application Using Python
+Install Python Driver
+pip install neo4j
+Python Program
+from neo4j import GraphDatabase
+
+uri = "bolt://localhost:7687"
+driver = GraphDatabase.driver(uri, auth=("neo4j", "password"))
+
+def create_user(name):
+    with driver.session() as s:
+        s.run("CREATE (:User {name:$name})", name=name)
+
+def get_users():
+    with driver.session() as s:
+        result = s.run("MATCH (u:User) RETURN u.name AS name")
+        for r in result:
+            print(r["name"])
+
+create_user("Rahul")
+create_user("Amit")
+get_users()
+
+driver.close()
+Create relationship
+with driver.session() as s:
+    s.run("""
+    MATCH (a:User {name:'Rahul'}),
+          (b:User {name:'Amit'})
+    CREATE (a)-[:FRIENDS_WITH]->(b)
+    """)
+Relationship query
+MATCH (u:User {name:'Rahul'})
+      -[:FRIENDS_WITH]->(f)
+RETURN f.name;
+CRUD
+CREATE → Create nodes/relationships
+MATCH  → Read data
+SET    → Update data
+DELETE → Delete data
+Applications
+
+Neo4j is especially suitable for:
+
+Social networks.
+Recommendation systems.
+Fraud detection.
+Knowledge graphs.
+Network analysis.
+Relationship-based search.
