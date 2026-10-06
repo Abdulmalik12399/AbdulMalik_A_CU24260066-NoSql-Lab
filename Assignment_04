@@ -1,0 +1,432 @@
+1. Column-Oriented NoSQL Databases
+
+Column-oriented NoSQL databases store data in column families rather than fixed rows and columns like RDBMS.
+
+Difference from RDBMS:
+
+RDBMS has fixed tables, rows, and columns.
+Column-family databases group related columns into column families.
+Different rows can have different columns.
+They are designed for distributed and large-scale data.
+
+Advantages:
+
+High scalability.
+Fast read/write for large datasets.
+Flexible schema.
+High availability and fault tolerance.
+Suitable for big-data applications.
+
+Limitations:
+
+Complex query support compared with SQL databases.
+Data modeling is query-dependent.
+Joins and multi-row transactions are limited.
+Poor design can cause performance problems.
+2. HBase vs Cassandra
+Feature	HBase	Cassandra
+Data Model	Column-family	Wide-column
+Architecture	Master + RegionServers	Peer-to-peer
+Consistency	Stronger consistency	Tunable consistency
+Availability	High	Very high
+Scalability	Horizontal	Horizontal
+Fault Tolerance	HDFS replication	Data replication
+Query	Get, Put, Scan, Filter	CQL
+Best Use	Hadoop/big-data systems	Highly distributed applications
+
+Choice: For a highly distributed application, Cassandra is generally preferred because it has a peer-to-peer architecture, no single master, high availability, and excellent multi-datacenter support.
+
+3. Apache HBase Architecture
+
+Main components:
+
+HMaster: Manages regions, load balancing, and RegionServers.
+RegionServer: Handles read/write requests.
+ZooKeeper: Provides coordination and tracks server status.
+HDFS: Provides distributed and fault-tolerant storage.
+Region: A horizontal portion of an HBase table.
+MemStore: Stores recent writes in memory before flushing to HFiles.
+
+Write operation:
+
+Client contacts HMaster/ZooKeeper to locate the RegionServer.
+Client sends data to the RegionServer.
+Data is written to the WAL and MemStore.
+MemStore is eventually flushed to HFiles in HDFS.
+
+Read operation:
+
+Client locates the required Region.
+RegionServer checks MemStore and block cache.
+If necessary, it reads HFiles from HDFS.
+Results are returned to the client.
+
+Architecture diagram:
+
+              +----------------+
+              |     Client     |
+              +-------+--------+
+                      |
+          +-----------+-----------+
+          |                       |
+   +------v------+         +------v------+
+   |   HMaster   |         |  ZooKeeper  |
+   +------+------+\        +------+------+
+          |                      |
+          +----------+-----------+
+                     |
+        +------------v-------------+
+        |       RegionServers       |
+        +------------+-------------+
+                     |
+          +----------+----------+
+          |                     |
+      +---v---+             +---v---+
+      |Region |             |Region |
+      |MemStore|            |MemStore|
+      +---+---+             +---+---+
+          |                     |
+          +----------+----------+
+                     |
+                 +---v---+
+                 | HDFS  |
+                 +-------+
+4. Column-Family Data Store Model
+
+Example: Student activity database.
+
+Row Key: 101
+
+Personal Family:
+Name = Rahul
+Course = BCA
+
+Activity Family:
+Login = 10:00 AM
+Page = Dashboard
+Action = Download
+
+Important concepts:
+
+Row Key: Unique identifier of a row.
+Column Family: Group of related columns.
+Column Qualifier: Individual column inside a family.
+Cell: Combination of row key, family, qualifier, timestamp, and value.
+Timestamp: Time associated with a cell value.
+Version: Multiple values of the same cell can be maintained using timestamps.
+
+RDBMS difference: RDBMS normally uses a fixed schema where every row follows the table structure. HBase allows different rows to contain different columns.
+
+5. HBase Model for University Activity Records
+
+For billions of activity records:
+
+Table: student_activity
+
+Row Key:
+
+StudentID#Timestamp
+
+Example:
+
+S101#202610062300
+
+Column Families:
+
+student
+  name
+  course
+  semester
+
+activity
+  login
+  page
+  action
+  device
+
+location
+  city
+  campus
+
+Justification:
+
+Student ID helps identify the student.
+Timestamp distributes activity records.
+Column families group related information.
+HBase is suitable because it can handle billions of records and distribute them across RegionServers.
+
+For extremely high traffic, a salt/hash prefix can also be added to avoid hotspotting.
+
+6. Consistency and Transactions in HBase and Cassandra
+
+HBase:
+
+Provides strong consistency for individual row operations.
+Supports atomic operations within a row.
+Does not provide traditional relational multi-row transactions.
+
+Cassandra:
+
+Provides tunable consistency.
+Supports consistency levels such as ONE, QUORUM, and ALL.
+Lightweight transactions can provide conditional atomic operations.
+
+Distributed databases make different trade-offs because they must handle network failures, replication, scalability, and availability.
+
+For example:
+
+Strong consistency → more accurate but may increase latency.
+Eventual consistency → better availability and performance but data may temporarily differ.
+7. Cassandra Availability and Fault Tolerance
+
+Cassandra uses a peer-to-peer architecture, so there is no single master.
+
+High availability is achieved through:
+
+Data replication across multiple nodes.
+Automatic partitioning.
+Replication across data centers.
+Failure detection.
+Request routing to available replicas.
+
+Consistency levels:
+
+ONE → Fast and highly available.
+QUORUM → Balance between consistency and availability.
+ALL → Stronger consistency but lower availability if a replica fails.
+
+Thus, replication and tunable consistency allow applications to choose their required balance.
+
+8. HBase and Cassandra Query Features
+
+HBase operations:
+
+Put
+Get
+Scan
+Delete
+Increment
+
+Example:
+
+get 'student', '101'
+put 'student', '101', 'info:name', 'Rahul'
+scan 'student'
+
+Cassandra CQL:
+
+SELECT * FROM student WHERE id = 101;
+
+INSERT INTO student(id,name)
+VALUES (101,'Rahul');
+
+UPDATE student
+SET name='Amit'
+WHERE id=101;
+
+DELETE FROM student WHERE id=101;
+
+Importance of data modeling:
+Column-family databases are designed around expected queries. Poor partition keys or query patterns can cause slow scans, hotspots, or excessive network traffic.
+
+9. Scaling HBase and Cassandra
+
+Both systems mainly use horizontal scaling, meaning additional servers are added.
+
+HBase:
+
+Tables are divided into Regions.
+Regions are distributed across RegionServers.
+HDFS provides replicated storage.
+HMaster manages region assignment and balancing.
+
+Cassandra:
+
+Data is divided into partitions.
+Consistent hashing distributes partitions among nodes.
+Replicas store copies of data.
+Nodes share workload through peer-to-peer architecture.
+Feature	HBase	Cassandra
+Scaling	Horizontal	Horizontal
+Partitioning	Regions	Partitions
+Replication	HDFS	Cassandra replication
+Load Distribution	RegionServers	Peer nodes
+Master Dependency	HMaster	No master
+10. Real-Time Event Logging System
+
+A column-family database is suitable because it can handle millions of writes per minute, huge datasets, and distributed workloads.
+
+Conceptual model:
+
+Table: events
+
+Row Key:
+UserID#Timestamp
+
+event:
+  type
+  action
+  source
+  device
+
+metadata:
+  IP
+  location
+  application
+
+Strategy:
+
+Use distributed partitioning.
+Use replication for fault tolerance.
+Use appropriate consistency such as QUORUM or ONE, depending on requirements.
+Add nodes horizontally as traffic increases.
+Use time-based or hashed keys to prevent hotspots.
+11. CMS/Blogging Platform
+
+A column-family database can store:
+
+Article
+  title
+  content
+  author
+  category
+
+Metadata
+  created_date
+  updated_date
+  status
+
+Tags
+  tag1
+  tag2
+  tag3
+
+Comments
+  comment1
+  comment2
+
+Different articles can contain different metadata and attributes.
+
+Advantages:
+
+Flexible schema.
+Easy to add new attributes.
+Suitable for large user activity data.
+Good scalability.
+
+Challenges:
+
+Data duplication may occur.
+Relationships are not as easy as SQL joins.
+Queries must be planned during data modeling.
+Changing access patterns may require new tables.
+12. Counters in Cassandra
+
+Cassandra provides a counter data type for tracking values such as likes and page views.
+
+Example:
+
+CREATE TABLE page_views (
+    page_id text PRIMARY KEY,
+    views counter
+);
+
+Increment:
+
+UPDATE page_views
+SET views = views + 1
+WHERE page_id = 'home';
+
+Problems:
+
+Concurrent updates can occur from many nodes.
+Network failures can complicate synchronization.
+Counter operations have special consistency and operational considerations.
+Heavy counter workloads can create hotspots.
+
+Counters should therefore be designed carefully for very high-volume applications.
+
+13. TTL – Time To Live
+
+TTL automatically expires data after a specified period.
+
+Example in Cassandra:
+
+INSERT INTO sessions
+(session_id, user_id)
+VALUES ('S101', 'U101')
+USING TTL 86400;
+
+86400 seconds = 24 hours.
+
+Uses:
+
+Temporary sessions.
+OTPs.
+Cache data.
+Temporary logs.
+
+Advantages:
+
+Automatic expiration.
+Reduces application-level deletion work.
+Useful for temporary data.
+
+Impact:
+Expired data still requires storage management and compaction. Applications should consider how expiration affects reads, storage, and compaction workload.
+
+14. HBase vs Cassandra for Real-Time Analytics
+
+Requirements:
+
+High write volume.
+Large datasets.
+Geographically distributed users.
+Node failures.
+Real-time processing.
+
+Recommendation: Cassandra
+
+Requirement	HBase	Cassandra
+High writes	Excellent	Excellent
+Large data	Excellent	Excellent
+Multi-region	Good	Excellent
+Availability	High	Very High
+Scaling	Excellent	Excellent
+Consistency	Strong	Tunable
+Query language	HBase API	CQL
+
+Why Cassandra?
+Its peer-to-peer architecture, multi-datacenter replication, tunable consistency, and high availability make it particularly suitable for geographically distributed real-time applications.
+
+15. Importance of Careful Data Modeling
+
+The statement is correct because NoSQL databases provide scalability and flexibility, but performance depends heavily on data modeling.
+
+Poor partition key:
+
+Can create uneven data distribution.
+Causes overloaded nodes or hotspots.
+
+Poor HBase row key:
+
+Sequential keys can create RegionServer hotspots.
+Poorly designed keys can reduce write performance.
+
+Poor column families:
+
+Too many unnecessary families can increase complexity.
+Poor grouping can cause inefficient reads.
+
+Poor replication:
+
+Low replication can reduce fault tolerance.
+Excessive replication increases storage and network cost.
+
+Poor query patterns:
+
+Large scans can be slow.
+Queries requiring joins are unsuitable.
+Filtering large datasets after retrieval wastes resources.
+
+Conclusion:
